@@ -1,5 +1,3 @@
-# 05_calendar_summary.py
-
 import pandas as pd
 import calendar
 from datetime import datetime
@@ -7,23 +5,27 @@ from datetime import datetime
 # データ読み込み
 df = pd.read_csv("data/parsed_receipt.csv")
 
-# 日付が複数ある場合にも対応
+# 日付の変換と無効な日付の削除
 df["日付"] = pd.to_datetime(df["日付"], errors='coerce')
+df = df.dropna(subset=["日付"])
 
-# 集計（月単位の支出）
-target_month = df["日付"].dt.to_period("M").iloc[0]  # 最初の日付の月を対象にする
+# ユーザー入力による年と月の指定
+year = int(input("表示したい年を入力してください（例：2025）: "))
+month = int(input("表示したい月を入力してください（1-12）: "))
+
+# 指定された年と月のデータを抽出
+target_month = f"{year}-{month:02}"
 month_df = df[df["日付"].dt.to_period("M") == target_month]
+
+# 日ごとの支出を集計
 summary = month_df.groupby(df["日付"].dt.day)["金額"].sum()
 
-# カレンダー作成
-year = target_month.year
-month = target_month.month
+# カレンダーの表示
 cal = calendar.Calendar(firstweekday=6)  # 日曜日始まり
 
 print(f"\n📅 {year}年{month}月の支出カレンダー\n")
 print("日  月  火  水  木  金  土")
 
-week_strs = []
 week = []
 for day in cal.itermonthdays(year, month):
     if day == 0:
@@ -35,8 +37,9 @@ for day in cal.itermonthdays(year, month):
         print("  ".join(week))
         week = []
 
-# 残りの週
+# 残りの週を表示
 if week:
     while len(week) < 7:
         week.append("    ")
     print("  ".join(week))
+
