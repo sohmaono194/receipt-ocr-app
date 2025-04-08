@@ -1,0 +1,7 @@
+streamlit
+pytesseract
+pillow
+pandas
+matplotlib
+japanize-matplotlib 
+opencv-python        
