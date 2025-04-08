@@ -6,7 +6,6 @@ import calendar
 import matplotlib
 import requests
 from PIL import Image
-import io
 import re
 
 # 日本語フォント設定
@@ -17,7 +16,7 @@ def ocr_space_image(image_bytes, api_key, language='jpn'):
     url = 'https://api.ocr.space/parse/image'
     response = requests.post(
         url,
-        files={'filename': ('image.jpg', image_bytes)},  # ← 修正ポイント！
+        files={'filename': ('image.jpg', image_bytes)},
         data={
             'apikey': api_key,
             'language': language,
@@ -25,10 +24,9 @@ def ocr_space_image(image_bytes, api_key, language='jpn'):
         }
     )
     result = response.json()
-    if result['IsErroredOnProcessing']:
-        raise Exception(result['ErrorMessage'][0])
+    if result.get('IsErroredOnProcessing'):
+        raise Exception(result.get('ErrorMessage', ['Unknown error'])[0])
     return result['ParsedResults'][0]['ParsedText']
-
 
 st.title("📷 レシートOCR支出管理アプリ")
 
@@ -53,13 +51,27 @@ if uploaded_file:
         # テキストから「品目＋金額」を抽出
         lines = text.splitlines()
         items = []
-        for line in lines:
-            match = re.search(r'(?P<item>.+?)\s+(?P<price>\d{2,6})$', line)
-            if match:
-                item = match.group("item").strip()
-                price = int(match.group("price"))
-                if not any(x in item for x in ['合計', 'お釣り', '本込', '税込']):
-                    items.append({"品目": item, "金額": price, "日付": datetime.today().strftime("%Y-%m-%d")})
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+            next_line = lines[i + 1].strip() if i + 1 < len(lines) else ""
+
+            # 正規表現：金額が \または¥付き、または数字だけのパターン
+            price_match = re.search(r'[¥\\]?\s?([0-9]{2,5})', next_line)
+
+            if price_match:
+                price = int(price_match.group(1))
+                item = line.strip()
+                # フィルタリング（不要ワードを除外）
+                if not any(x in item for x in ['合計', '計', 'お預り', 'お釣り', 'ISPポイント', '支払方法', 'クレジット']):
+                    items.append({
+                        "日付": datetime.today().strftime("%Y-%m-%d"),
+                        "品目": item,
+                        "金額": price
+                    })
+                i += 2  # 2行進める
+            else:
+                i += 1  # 次の行へ
 
         if items:
             df = pd.DataFrame(items)
@@ -108,4 +120,3 @@ if uploaded_file:
         st.error(f"OCRエラー：{e}")
 else:
     st.info("画像をアップロードするとOCR処理が始まります。")
-
