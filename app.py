@@ -17,7 +17,7 @@ def ocr_space_image(image_bytes, api_key, language='jpn'):
     url = 'https://api.ocr.space/parse/image'
     response = requests.post(
         url,
-        files={'filename': image_bytes},
+        files={'filename': ('image.jpg', image_bytes)},  # ← 修正ポイント！
         data={
             'apikey': api_key,
             'language': language,
@@ -28,6 +28,7 @@ def ocr_space_image(image_bytes, api_key, language='jpn'):
     if result['IsErroredOnProcessing']:
         raise Exception(result['ErrorMessage'][0])
     return result['ParsedResults'][0]['ParsedText']
+
 
 st.title("📷 レシートOCR支出管理アプリ")
 
